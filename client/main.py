@@ -1,13 +1,18 @@
+#for secret client token
 import os
-import discord
-from discord.ext import commands
 from dotenv import load_dotenv
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+#for discord api
+import discord
+from discord.ext import commands
+
+#for talking with the server with minecraft
+from websockets.sync.client import connect
+import asyncio
+import json
 
 intents = discord.Intents.default()
 intents.message_content = True
-
 client = commands.Bot(command_prefix=".", intents=intents, activity=discord.Game(name="Server Live!"), status=discord.Status.idle)
 
 @client.event
@@ -29,9 +34,12 @@ async def stop(ctx):
 
     # call the websocket on the pc with the minecraft server running on it to close and back it up.
     # the webserver should responed upon completion with some code to tell the discord bot to change presence to not online or sum
-
-    
+    with connect("ws://localhost:8000") as websocket:
+        websocket.send(json.dumps({"type": "stop"}))
+        message = websocket.recv()
+        print(message)
 
     await ctx.response.send_message("stop")
 
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))

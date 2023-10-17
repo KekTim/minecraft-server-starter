@@ -4,5 +4,24 @@
 
 import websockets
 import asyncio
+import json
 
-#server that takes request which are triggert by the main.py of the discord bot
+async def handler(websocket):
+    async for message in websocket:
+        data = json.loads(message)
+
+        if data["type"] == "start":
+            continue
+
+        if data["type"] == "stop":
+            await websocket.send("hi") 
+
+            
+            continue
+
+
+async def main():
+    async with websockets.serve(handler, "", 8000): #idk if there neds to be an ip in the ""
+        await asyncio.Future()  # run forever
+
+asyncio.run(main())
