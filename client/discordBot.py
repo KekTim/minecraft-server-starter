@@ -21,25 +21,28 @@ client = commands.Bot(command_prefix=".", intents=intents, activity=discord.Game
 
 @client.event
 async def on_ready():
+    # await client.tree.sync()
     print("Bot is online")
-    await client.tree.sync()
 
-@client.tree.command(name="start", description="Start the Minecraft Server")
+# @client.tree.command(name="start", description="Start the Minecraft Server")
+@client.command()
 async def start(ctx):
 
     # localhost will have to be replaced with the static address of the minecraft server or sum
-    with connect("ws://localhost:8000") as websocket:
-        websocket.send(json.dumps({"type": "status"}))
-        message = websocket.recv()
-
-        if message:
-            print("on")
-        else:
-            print("off")
-
     #check if the server is already running
+    try:
+        #
 
-    await ctx.response.send_message("Starting the Minecraft Server")
+        connect("ws://localhost:8000")
+        return
+
+
+    except Exception as e:
+        pass
+        
+    
+
+    await ctx.channel.send("Starting the Minecraft Server")
 
     # start wake on lan protocol to start
     # pc with the minecraft server on it
@@ -50,7 +53,8 @@ async def start(ctx):
     
 
 
-@client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
+# @client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
+@client.command()
 async def stop(ctx):
     await client.change_presence(activity=discord.Game(name="Stoping the Server"), status=discord.Status.dnd) 
 
@@ -58,9 +62,9 @@ async def stop(ctx):
     # the webserver should responed upon completion with some code to tell the discord bot to change presence to not online or sum
     with connect("ws://localhost:8000") as websocket:
         websocket.send(json.dumps({"type": "stop"}))
-        message = websocket.recv()
-        print(message)
+        # message = websocket.recv()
+        # print(message)
 
-    await ctx.response.send_message("stop")
+    await ctx.channel.send("stop")
 
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))

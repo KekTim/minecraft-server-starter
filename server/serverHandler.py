@@ -32,7 +32,9 @@ import json
 async def close(websocket):
     async for message in websocket:
         data = json.loads(message)
-
+        server.stdin.write(b"stop\n")
+        server.stdin.flush()
+        print("Minecraft Server Stopped")
 
 
 async def main():
