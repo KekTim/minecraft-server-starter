@@ -1,6 +1,7 @@
-#for secret client token
+#for .env file 
 import os
 from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 #for discord api
 import discord
@@ -41,5 +42,4 @@ async def stop(ctx):
 
     await ctx.response.send_message("stop")
 
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))

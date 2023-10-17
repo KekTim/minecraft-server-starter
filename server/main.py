@@ -1,6 +1,17 @@
-# skript that gets autostarted once the pc with the minecraft server
-# is online and logged in (there should be no password e.g. no reason to login
-# as i dont know how that would work with wake on lan lol)
+# Skript gets autostarted when starting the PC over LAN
+# the PC should have no password
+
+
+
+#for .env file 
+import os
+from dotenv import load_dotenv
+load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+
+#start the server!
+import subprocess
+subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
+
 
 import websockets
 import asyncio
@@ -10,13 +21,14 @@ async def handler(websocket):
     async for message in websocket:
         data = json.loads(message)
 
-        if data["type"] == "start":
+        if data["type"] == "backup":
+            await websocket.send("backuped")
             continue
 
+        # kinda redundaned because only message that can get send is the stop request.
+        # expect if i make an extra option to back the server up manually
         if data["type"] == "stop":
-            await websocket.send("hi") 
-
-            
+            await websocket.send("stopped") 
             continue
 
 
