@@ -1,6 +1,3 @@
-from time import sleep
-from subprocess import Popen 
-
 #for .env file 
 import os
 from dotenv import load_dotenv
@@ -11,6 +8,7 @@ import discord
 from discord.ext import commands
 
 #for talking with the server with minecraft
+import websockets
 from websockets.sync.client import connect
 import asyncio
 import json
@@ -56,15 +54,37 @@ async def start(ctx):
 # @client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
 @client.command()
 async def stop(ctx):
-    await client.change_presence(activity=discord.Game(name="Stoping the Server"), status=discord.Status.dnd) 
+
+    message = await ctx.channel.send("Starting the Stopping Process!")
+    await asyncio.sleep(1)
 
     # call the websocket on the pc with the minecraft server running on it to close and back it up.
     # the webserver should responed upon completion with some code to tell the discord bot to change presence to not online or sum
-    with connect("ws://localhost:8000") as websocket:
-        websocket.send(json.dumps({"type": "stop"}))
-        # message = websocket.recv()
-        # print(message)
+    try:
+        websocket = connect("ws://localhost:8000")
+    except WindowsError as e:
+        await message.edit(content="Unable to Access Server. Might already be offline") 
+        return
 
-    await ctx.channel.send("stop")
+    websocket.send(json.dumps({"type": "stop"}))
+    while True:
+        try:
+            data = json.loads(websocket.recv())
+        except websockets.exceptions.ConnectionClosed:
+            await ctx.channel.send("Something went wrong, please try later or inform the admin")
+            return
+
+        if data["status"] == -1:
+            await message.edit(content=data["message"]) 
+            return
+
+        if data["status"] == 0:
+            await client.change_presence(activity=discord.Game(name=data["message"]), status=discord.Status.dnd)
+            await message.edit(content=data["message"])
+
+        if data["status"] == 1:
+            await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
+            await message.edit(content=data["message"])
+            return
 
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))

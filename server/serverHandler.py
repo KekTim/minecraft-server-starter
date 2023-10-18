@@ -46,35 +46,44 @@ def backupMinecraftServer():
 
 server = startMinecraftServer()
 stopping = False
+
 async def close(websocket):
+    global server
+    global stopping
+
     async for message in websocket:
         data = json.loads(message)
 
         if data["type"] != "stop":
-            websocket.send(json.dumps({"message": "not right type"}))
-            websocket.close()
+            await websocket.send(json.dumps({"status": -1, "message": "not right type"}))
+            await websocket.close()
             continue
 
-        if not stopping:
-            websocket.send(json.dumps({"message": "already stopping"}))
-            websocket.close()
+        if stopping:
+            await websocket.send(json.dumps({"status": -1, "message": "already stopping"}))
+            await websocket.close()
             continue
 
         stopping = True
 
-        await websocket.send(json.dumps({"message": "closing server"}))
+        await websocket.send(json.dumps({"status": 0, "message": "closing server"}))
         closeMinecraftServer(server)
+        await asyncio.sleep(2)
 
-        await websocket.send(json.dumps({"message": "server closed and starting backup"}))
+        await websocket.send(json.dumps({"status": 0, "message": "server closed and starting backup"}))
         backupMinecraftServer()
+        await asyncio.sleep(2)
 
-        await websocket.send(json.dumps({"message": "backup complete and starting shutdown"}))
-        websocket.close()
-        
-        import sys
-        sys.exit()
-        # os.system("shutdown /s /t 10")
+        await websocket.send(json.dumps({"status": 0, "message": "backup complete and starting shutdown"}))
+        os.system("shutdown /s /t 10")
+        await asyncio.sleep(2)
 
+
+        await websocket.send(json.dumps({"status": 1, "message": "shutted down"}))
+        await websocket.close()
+
+        # server = startMinecraftServer() # so i dont have to restart
+        # stopping = False
 
 async def main():
     async with websockets.serve(close, "", 8000): #idk if there neds to be an ip in the ""
