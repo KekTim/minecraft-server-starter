@@ -3,6 +3,9 @@ import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
+#for wakeonlan lol
+import wakeonlan
+
 #for discord api
 import discord
 from discord.ext import commands
@@ -22,34 +25,40 @@ async def on_ready():
     # await client.tree.sync()
     print("Bot is online")
 
+@client.command()
+async def ping(ctx):
+    await ctx.channel.send("pong")
+
 # @client.tree.command(name="start", description="Start the Minecraft Server")
 @client.command()
 async def start(ctx):
 
-    # localhost will have to be replaced with the static address of the minecraft server or sum
-    #check if the server is already running
-    try:
-        #
+    message = await ctx.channel.send("Trying to start the Server")
+    await client.change_presence(activity=discord.Game(name="Starting Server"), status=discord.Status.dnd)
 
-        connect("ws://localhost:8000")
-        return
+    #havent tested if this works
+    #for testing the bottom part i now just start
+    #the server manually after some time
+    wakeonlan.send_magic_packet(os.environ.get("SERVER_MAC"))
 
+    attempts = 0
+    while True:
+        try:
+            if attempts >= 6:
+                await message.edit(content="Unable to start the server, contact the admin")
+                await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle) 
+                return
 
-    except Exception as e:
-        pass
-        
+            connect("ws://localhost:8000")
+            break
+        except WindowsError:
+            attempts+=1
+            await message.edit(content=f"Trying to connect. Attempt: {attempts}")
+            await asyncio.sleep(10)
+   
+    await message.edit(content="Server has Started!")
+    await client.change_presence(activity=discord.Game(name="Server online"), status=discord.Status.online)
     
-
-    await ctx.channel.send("Starting the Minecraft Server")
-
-    # start wake on lan protocol to start
-    # pc with the minecraft server on it
-    await client.change_presence(activity=discord.Game(name="Starting Server"), status=discord.Status.idle)
-
-    #check through pings if the server has started
-    await client.change_presence(activity=discord.Game(name="Server is online"), status=discord.Status.online)
-    
-
 
 # @client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
 @client.command()
