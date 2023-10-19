@@ -21,22 +21,42 @@ from mcstatus import JavaServer
 #start the server!
 import subprocess
 
+import threading
+
 def startMinecraftServer():
-    server = subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True)
+    server = subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
     while True:
 
         # some check if this takes like 50 seconds and if yes then stop
         # and maybe restart and keep track of how many restarts happend
         # so when there are 3 consecutive just stop and shut down or sum
 
-        output_line = str(server.stdout.readline().strip())
-        print(output_line) 
-        if "Done" in output_line:
+        line = str(server.stdout.readline().strip())
+        print(line) 
+        if "Done" in line:
             print("Minecraft Server has Started!")
+
+            logThread = threading.Thread(target=logConsole, args=(server,))
+            logThread.start()
+
             return server
 
+serverLogs = []
+def logConsole(server):
+    global serverLogs
+    while True:
+
+        line = server.stdout.readline()
+
+        if line == "":
+            continue
+
+        serverLogs.append(line)
+        if len(serverLogs) >= 100:
+            serverLogs.pop(0)
+
 def closeMinecraftServer(serverToClose):
-    serverToClose.stdin.write(b"stop\n")
+    serverToClose.stdin.write("stop\n")
     serverToClose.stdin.flush()
     serverToClose.wait()
     
@@ -58,13 +78,9 @@ async def close(websocket):
         data = json.loads(message)
 
         if data["type"] == "console":
-            output_line = server.stdout.read()
-
-            print("fortnite")
-            await websocket.send(json.dumps({"status": 1, "message": output_line}))
+            await websocket.send(json.dumps({"status": 1, "logs": serverLogs}))
             await websocket.close()
-            print(output_line)
-            continue
+            continue 
 
         if data["type"] == "stop":
             if stopping:
@@ -103,7 +119,6 @@ async def close(websocket):
             print("backup complete and starting shutdown")
             # os.system("shutdown /s /t 10")
             await asyncio.sleep(2)
-
 
             await websocket.send(json.dumps({"status": 1, "message": "shutted down"}))
             await websocket.close()

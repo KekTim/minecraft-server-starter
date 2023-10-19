@@ -96,6 +96,8 @@ async def stop(ctx):
             await message.edit(content=data["message"])
             return
 
+# this commant should somehow be resticted to the person hosting the server as it leaks ips
+# add some kind of value to the .env to check for that
 @client.command()
 async def console(ctx):
     pass
@@ -105,23 +107,22 @@ async def console(ctx):
     except WindowsError as e:
         await ctx.channel.send(content="Unable to Access Server. Might already be offline") 
         return
-
     websocket.send(json.dumps({"type": "console"})) 
+
     while True:
         try:
             data = json.loads(websocket.recv())
-            print(data)
-            print("Hallo")
         except websockets.exceptions.ConnectionClosed:
             await ctx.channel.send("Something went wrong, please try later or inform the admin")
             return
 
         if data["status"] == 1:
-            print("hallo")
-            ctx.channel.send(data["message"])
+            finalMessage = "Logs: ```"
+            for message in data["logs"]:
+                finalMessage += message
+
+            finalMessage += "\n```"
+            await ctx.channel.send(finalMessage)
             break
-
-
-
 
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))
