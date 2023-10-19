@@ -15,6 +15,9 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 import shutil
 import datetime
 
+#mc status
+from mcstatus import JavaServer 
+
 #start the server!
 import subprocess
 
@@ -61,6 +64,18 @@ async def close(websocket):
 
         if stopping:
             await websocket.send(json.dumps({"status": -1, "message": "already stopping"}))
+            await websocket.close()
+            continue
+
+        try:
+            serverLookup = JavaServer.lookup("localhost:25565").status()
+        except:
+            await websocket.send(json.dumps({"status": -1, "message": "server seems to be offline. this should not be possible please contact admin"}))
+            await websocket.close()
+            continue
+
+        if serverLookup.players.online != 0:
+            await websocket.send(json.dumps({"status": -1, "message": "won't stop, there are people playing"}))
             await websocket.close()
             continue
 
