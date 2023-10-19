@@ -23,9 +23,14 @@ intents = discord.Intents.default()
 intents.message_content = True
 client = commands.Bot(command_prefix=".", intents=intents)
 
-async def updatePlayerCount(client):
+async def updatePlayerCount():
     while True:
-        players = mcstatus.JavaServer.lookup("localhost:25565").status().players.online
+        try:
+            players = mcstatus.JavaServer.lookup("localhost:25565").status().players.online
+        except:
+            await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
+            break 
+
         if players == 0:
             await client.change_presence(activity=discord.Game(name="Server is online!"))
         else:
@@ -34,7 +39,13 @@ async def updatePlayerCount(client):
 
 @client.event
 async def on_ready():
-    # await client.tree.sync()
+    try:
+        connect("ws://localhost:8000")
+        global refreshPlayerCount
+        refreshPlayerCount = asyncio.create_task(updatePlayerCount())
+    except WindowsError:
+        await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
+
     print("Bot is online")
 
 @client.command()
@@ -72,7 +83,7 @@ async def start(ctx):
     await client.change_presence(activity=discord.Game(name="Server online"), status=discord.Status.online)
 
     global  refreshPlayerCount 
-    refreshPlayerCount = asyncio.create_task(updatePlayerCount(client))
+    refreshPlayerCount = asyncio.create_task(updatePlayerCount())
 
 # @client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
 @client.command()
