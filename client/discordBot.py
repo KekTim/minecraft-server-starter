@@ -6,6 +6,9 @@ load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 #for wakeonlan lol
 import wakeonlan
 
+#for updating player count
+import mcstatus
+
 #for discord api
 import discord
 from discord.ext import commands
@@ -18,7 +21,16 @@ import json
 
 intents = discord.Intents.default()
 intents.message_content = True
-client = commands.Bot(command_prefix=".", intents=intents, activity=discord.Game(name="Bot Online"), status=discord.Status.idle)
+client = commands.Bot(command_prefix=".", intents=intents)
+
+async def updatePlayerCount(client):
+    while True:
+        players = mcstatus.JavaServer.lookup("localhost:25565").status().players.online
+        if players == 0:
+            await client.change_presence(activity=discord.Game(name="Server is online!"))
+        else:
+            await client.change_presence(activity=discord.Game(name=f"{players} player online"))
+        await asyncio.sleep(60)
 
 @client.event
 async def on_ready():
@@ -58,11 +70,14 @@ async def start(ctx):
    
     await message.edit(content="Server has Started!")
     await client.change_presence(activity=discord.Game(name="Server online"), status=discord.Status.online)
-    
+
+    global  refreshPlayerCount 
+    refreshPlayerCount = asyncio.create_task(updatePlayerCount(client))
 
 # @client.tree.command(name="stop", description="Stop the Minecraft Server and Back it up")
 @client.command()
 async def stop(ctx):
+    refreshPlayerCount.cancel()
 
     message = await ctx.channel.send("Starting the Stopping Process!")
     await asyncio.sleep(1)
