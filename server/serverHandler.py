@@ -1,38 +1,39 @@
 # Skript gets autostarted when starting the PC over LAN
-# the PC should have no password
+# the PC should have no password so it instantly gets logged in
 
-#for the websocket
+# for the websocket
 import websockets
 import asyncio
 import json
 
-#for .env file 
+# for .env file 
 import os
 from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
-#for the backup
+# for the backup
 import shutil
 import datetime
 
-#mc status
+# to check how many players are online 
 from mcstatus import JavaServer 
 
-#start the server!
+# start the server!
 import subprocess
 
+# for logging the minecraft console
 import threading
 
+
 def startMinecraftServer():
+    """
+    Starts the Server and then returns the process
+    """
     server = subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
     while True:
 
-        # some check if this takes like 50 seconds and if yes then stop
-        # and maybe restart and keep track of how many restarts happend
-        # so when there are 3 consecutive just stop and shut down or sum
-
         line = str(server.stdout.readline().strip())
-        print(line) 
+        # if done the then continue
         if "Done" in line:
             print("Minecraft Server has Started!")
 
@@ -41,13 +42,16 @@ def startMinecraftServer():
 
             return server
 
+        # if server fails to start becauser ressource might already be open somewhere else then shut down
+        if "Failed" in line:
+            print("Miencraft Server has failed to start. Shutdown")
+            os.system("shutdown /s /t 10")
+
 serverLogs = []
 def logConsole(server):
     global serverLogs
     while True:
-
         line = server.stdout.readline()
-
         if line == "":
             continue
 
@@ -61,9 +65,8 @@ def closeMinecraftServer(serverToClose):
     serverToClose.wait()
     
 def backupMinecraftServer():
-    from werkzeug.utils import secure_filename
     serverLocation = os.environ.get("SERVER_LOCATION")
-    backupLocation = os.path.join(os.environ.get("BACKUP_LOCATION"), secure_filename(datetime.datetime.now().strftime("Date %d.%m.%Y Time %H.%M.%S")))
+    backupLocation = os.path.join(os.environ.get("BACKUP_LOCATION"), datetime.datetime.now().strftime("Date %d.%m.%Y Time %H.%M.%S"))
     shutil.make_archive(backupLocation, "zip", serverLocation)
 
 
@@ -84,48 +87,46 @@ async def close(websocket):
 
         if data["type"] == "stop":
             if stopping:
-                await websocket.send(json.dumps({"status": -1, "message": "already stopping"}))
+                await websocket.send(json.dumps({"status": -1, "message": "Server is already stopping"}))
                 await websocket.close()
-                print("already stopping")
+                print("Server is already stopping")
                 continue
 
             try:
                 serverLookup = JavaServer.lookup("localhost:25565").status()
             except:
-                await websocket.send(json.dumps({"status": -1, "message": "server seems to be offline. this should not be possible please contact admin"}))
+                await websocket.send(json.dumps({"status": -1, "message": "Minecraft Server seems to be offline but not the PC. Shutting down now."}))
                 await websocket.close()
-                print("server seems to be offline. this should not be possible please contact admin")
+                print("Minecraft Server seems to be offline but not the PC. Shutting down now.")
+                os.system("shutdown /s /t 10")
                 continue
 
             if serverLookup.players.online != 0:
-                await websocket.send(json.dumps({"status": -1, "message": "won't stop, there are people playing"}))
+                await websocket.send(json.dumps({"status": -1, "message": "Can't shut down with players online"}))
                 await websocket.close()
-                print("won't stop, there are people playing")
+                print("Can't shut down with players online")
                 continue
 
             stopping = True
 
-            await websocket.send(json.dumps({"status": 0, "message": "closing server"}))
-            print("closing server") 
+            await websocket.send(json.dumps({"status": 0, "message": "Starting to closing process"}))
+            print("Starting to closing process") 
             closeMinecraftServer(server)
             await asyncio.sleep(2)
 
-            await websocket.send(json.dumps({"status": 0, "message": "server closed and starting backup"}))
-            print("server closed and starting backup") 
+            await websocket.send(json.dumps({"status": 0, "message": "Minecraft Server closed successfully. Starting backup process"}))
+            print("Minecraft Server closed successfully. Starting backup process") 
             backupMinecraftServer()
             await asyncio.sleep(2)
 
-            await websocket.send(json.dumps({"status": 0, "message": "backup complete and starting shutdown"}))
-            print("backup complete and starting shutdown")
-            # os.system("shutdown /s /t 10")
+            await websocket.send(json.dumps({"status": 0, "message": "Backup completed successfully. Starting shutdown"}))
+            print("Backup completed successfully. Starting shutdown")
+            os.system("shutdown /s /t 10")
             await asyncio.sleep(2)
 
-            await websocket.send(json.dumps({"status": 1, "message": "shutted down"}))
+            await websocket.send(json.dumps({"status": 1, "message": "Shutting down. Bye"}))
             await websocket.close()
-            print("shutted down")
-
-            # server = startMinecraftServer() # so i dont have to restart
-            # stopping = False
+            print("Shutting down. Bye")
 
 async def main():
     async with websockets.serve(close, "", 8000): #idk if there neds to be an ip in the ""

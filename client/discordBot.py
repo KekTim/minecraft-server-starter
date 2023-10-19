@@ -56,7 +56,8 @@ async def ping(ctx):
 @client.command()
 async def start(ctx):
 
-    message = await ctx.channel.send("Trying to start the Server")
+    text = "```Attempting to Start the Server```"
+    message = await ctx.channel.send(text)
     await client.change_presence(activity=discord.Game(name="Starting Server"), status=discord.Status.dnd)
 
     #havent tested if this works
@@ -68,7 +69,8 @@ async def start(ctx):
     while True:
         try:
             if attempts >= 6:
-                await message.edit(content="Unable to start the server, contact the admin")
+                text += "```Unable to start the server, contact the admin```"
+                await message.edit(content=text)
                 await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle) 
                 return
 
@@ -76,11 +78,15 @@ async def start(ctx):
             break
         except WindowsError:
             attempts+=1
-            await message.edit(content=f"Trying to connect. Attempt: {attempts}")
+
+            temp = text 
+            temp += f"```Trying to connect. Attempt: {attempts}```"
+            await message.edit(content=temp)
+
             await asyncio.sleep(10)
    
-    await message.edit(content="Server has Started!")
-    await client.change_presence(activity=discord.Game(name="Server online"), status=discord.Status.online)
+    text += "```Server has started```"
+    await message.edit(content=text)
 
     global  refreshPlayerCount 
     refreshPlayerCount = asyncio.create_task(updatePlayerCount())
@@ -90,7 +96,8 @@ async def start(ctx):
 async def stop(ctx):
     refreshPlayerCount.cancel()
 
-    message = await ctx.channel.send("Starting the Stopping Process!")
+    text = "```Attempting to stop the server```"
+    message = await ctx.channel.send(text)
     await asyncio.sleep(1)
 
     # call the websocket on the pc with the minecraft server running on it to close and back it up.
@@ -98,7 +105,8 @@ async def stop(ctx):
     try:
         websocket = connect("ws://localhost:8000")
     except WindowsError as e:
-        await message.edit(content="Unable to Access Server. Might already be offline") 
+        text += "```Unable to start the server, contact the admin```"
+        await message.edit(content=text)
         return
 
     websocket.send(json.dumps({"type": "stop"}))
@@ -106,32 +114,35 @@ async def stop(ctx):
         try:
             data = json.loads(websocket.recv())
         except websockets.exceptions.ConnectionClosed:
-            await message.edit(content="Something went wrong, please try later or inform the admin")
+
+            text += "```Something went wrong, please try later or inform the admin```"
+            await message.edit(content=text)
             return
 
         if data["status"] == -1:
-            await message.edit(content=data["message"]) 
+            text += "```"+data["message"]+"```"
+            await message.edit(content=text) 
             return
 
         if data["status"] == 0:
             await client.change_presence(activity=discord.Game(name=data["message"]), status=discord.Status.dnd)
-            await message.edit(content=data["message"])
+            text += "```"+data["message"]+"```"
+            await message.edit(content=text) 
 
         if data["status"] == 1:
             await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
-            await message.edit(content=data["message"])
+            text += "```"+data["message"]+"```"
+            await message.edit(content=text) 
             return
 
 # this commant should somehow be resticted to the person hosting the server as it leaks ips
 # add some kind of value to the .env to check for that
 @client.command()
 async def console(ctx):
-    pass
-
     try:
         websocket = connect("ws://localhost:8000")
     except WindowsError as e:
-        await ctx.channel.send(content="Unable to Access Server. Might already be offline") 
+        await ctx.channel.send("```Unable to start the server, contact the admin```")
         return
     websocket.send(json.dumps({"type": "console"})) 
 
@@ -139,7 +150,7 @@ async def console(ctx):
         try:
             data = json.loads(websocket.recv())
         except websockets.exceptions.ConnectionClosed:
-            await ctx.channel.send("Something went wrong, please try later or inform the admin")
+            await ctx.channel.send("```Something went wrong, please try later or inform the admin```")
             return
 
         if data["status"] == 1:
