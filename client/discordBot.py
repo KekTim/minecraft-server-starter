@@ -80,7 +80,7 @@ async def stop(ctx):
         try:
             data = json.loads(websocket.recv())
         except websockets.exceptions.ConnectionClosed:
-            await ctx.channel.send("Something went wrong, please try later or inform the admin")
+            await message.edit(content="Something went wrong, please try later or inform the admin")
             return
 
         if data["status"] == -1:
@@ -95,5 +95,33 @@ async def stop(ctx):
             await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
             await message.edit(content=data["message"])
             return
+
+@client.command()
+async def console(ctx):
+    pass
+
+    try:
+        websocket = connect("ws://localhost:8000")
+    except WindowsError as e:
+        await ctx.channel.send(content="Unable to Access Server. Might already be offline") 
+        return
+
+    websocket.send(json.dumps({"type": "console"})) 
+    while True:
+        try:
+            data = json.loads(websocket.recv())
+            print(data)
+            print("Hallo")
+        except websockets.exceptions.ConnectionClosed:
+            await ctx.channel.send("Something went wrong, please try later or inform the admin")
+            return
+
+        if data["status"] == 1:
+            print("hallo")
+            ctx.channel.send(data["message"])
+            break
+
+
+
 
 client.run(os.environ.get("DISCORD_BOT_TOKEN"))

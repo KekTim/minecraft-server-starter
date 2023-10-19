@@ -57,48 +57,60 @@ async def close(websocket):
     async for message in websocket:
         data = json.loads(message)
 
-        if data["type"] != "stop":
-            await websocket.send(json.dumps({"status": -1, "message": "not right type"}))
+        if data["type"] == "console":
+            output_line = server.stdout.read()
+
+            print("fortnite")
+            await websocket.send(json.dumps({"status": 1, "message": output_line}))
             await websocket.close()
+            print(output_line)
             continue
 
-        if stopping:
-            await websocket.send(json.dumps({"status": -1, "message": "already stopping"}))
+        if data["type"] == "stop":
+            if stopping:
+                await websocket.send(json.dumps({"status": -1, "message": "already stopping"}))
+                await websocket.close()
+                print("already stopping")
+                continue
+
+            try:
+                serverLookup = JavaServer.lookup("localhost:25565").status()
+            except:
+                await websocket.send(json.dumps({"status": -1, "message": "server seems to be offline. this should not be possible please contact admin"}))
+                await websocket.close()
+                print("server seems to be offline. this should not be possible please contact admin")
+                continue
+
+            if serverLookup.players.online != 0:
+                await websocket.send(json.dumps({"status": -1, "message": "won't stop, there are people playing"}))
+                await websocket.close()
+                print("won't stop, there are people playing")
+                continue
+
+            stopping = True
+
+            await websocket.send(json.dumps({"status": 0, "message": "closing server"}))
+            print("closing server") 
+            closeMinecraftServer(server)
+            await asyncio.sleep(2)
+
+            await websocket.send(json.dumps({"status": 0, "message": "server closed and starting backup"}))
+            print("server closed and starting backup") 
+            backupMinecraftServer()
+            await asyncio.sleep(2)
+
+            await websocket.send(json.dumps({"status": 0, "message": "backup complete and starting shutdown"}))
+            print("backup complete and starting shutdown")
+            # os.system("shutdown /s /t 10")
+            await asyncio.sleep(2)
+
+
+            await websocket.send(json.dumps({"status": 1, "message": "shutted down"}))
             await websocket.close()
-            continue
+            print("shutted down")
 
-        try:
-            serverLookup = JavaServer.lookup("localhost:25565").status()
-        except:
-            await websocket.send(json.dumps({"status": -1, "message": "server seems to be offline. this should not be possible please contact admin"}))
-            await websocket.close()
-            continue
-
-        if serverLookup.players.online != 0:
-            await websocket.send(json.dumps({"status": -1, "message": "won't stop, there are people playing"}))
-            await websocket.close()
-            continue
-
-        stopping = True
-
-        await websocket.send(json.dumps({"status": 0, "message": "closing server"}))
-        closeMinecraftServer(server)
-        await asyncio.sleep(2)
-
-        await websocket.send(json.dumps({"status": 0, "message": "server closed and starting backup"}))
-        backupMinecraftServer()
-        await asyncio.sleep(2)
-
-        await websocket.send(json.dumps({"status": 0, "message": "backup complete and starting shutdown"}))
-        os.system("shutdown /s /t 10")
-        await asyncio.sleep(2)
-
-
-        await websocket.send(json.dumps({"status": 1, "message": "shutted down"}))
-        await websocket.close()
-
-        # server = startMinecraftServer() # so i dont have to restart
-        # stopping = False
+            # server = startMinecraftServer() # so i dont have to restart
+            # stopping = False
 
 async def main():
     async with websockets.serve(close, "", 8000): #idk if there neds to be an ip in the ""
