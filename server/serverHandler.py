@@ -30,13 +30,16 @@ def startMinecraftServer():
     Starts the Server and then returns the process
     """
     server = subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
+    file = open("logs.txt", "a")
     while True:
+        line = server.stdout.readline()
+        file.write(line)
 
-        line = str(server.stdout.readline().strip())
         # if done the then continue
         if "Done" in line:
-            print("Minecraft Server has Started!")
+            file.close()
 
+            print("Minecraft Server has Started!")
             logThread = threading.Thread(target=logConsole, args=(server,))
             logThread.start()
 
@@ -45,19 +48,17 @@ def startMinecraftServer():
         # if server fails to start becauser ressource might already be open somewhere else then shut down
         if "Failed" in line:
             print("Miencraft Server has failed to start. Shutdown")
+            file.close()
             os.system("shutdown /s /t 10")
 
-serverLogs = []
 def logConsole(server):
-    global serverLogs
     while True:
         line = server.stdout.readline()
         if line == "":
             continue
-
-        serverLogs.append(line)
-        if len(serverLogs) >= 100:
-            serverLogs.pop(0)
+        
+        with open("logs.txt", "a") as file:
+            file.write(line)
 
 def closeMinecraftServer(serverToClose):
     serverToClose.stdin.write("stop\n")
@@ -81,7 +82,8 @@ async def close(websocket):
         data = json.loads(message)
 
         if data["type"] == "console":
-            await websocket.send(json.dumps({"status": 1, "logs": serverLogs}))
+            with open("logs.txt", "r") as file:
+                await websocket.send(json.dumps({"status": 1, "logs": file.readlines()[-100:]}))
             await websocket.close()
             continue 
 
