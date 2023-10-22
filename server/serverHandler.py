@@ -29,16 +29,20 @@ def startMinecraftServer():
     """
     Starts the Server and then returns the process
     """
-    server = subprocess.Popen([os.environ.get("SERVER_START_FILE")], shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
-    file = open("logs.txt", "a")
+    server = subprocess.Popen(os.environ.get("SERVER_START_FILE"), cwd=os.environ.get("SERVER_LOCATION"), shell=True, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, close_fds=True, universal_newlines=True)
+
     while True:
+        # make sure windows cmd uses chcp 65001
         line = server.stdout.readline()
-        file.write(line)
+
+        if line != "":
+            print(line)
+
+        with open("logs.txt", "a") as file:
+            file.write(line)
 
         # if done the then continue
         if "Done" in line:
-            file.close()
-
             print("Minecraft Server has Started!")
             logThread = threading.Thread(target=logConsole, args=(server,))
             logThread.start()
@@ -48,7 +52,6 @@ def startMinecraftServer():
         # if server fails to start becauser ressource might already be open somewhere else then shut down
         if "Failed" in line:
             print("Miencraft Server has failed to start. Shutdown")
-            file.close()
             os.system("shutdown /s /t 10")
 
 def logConsole(server):
