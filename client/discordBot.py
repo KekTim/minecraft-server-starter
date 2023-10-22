@@ -26,7 +26,7 @@ client = commands.Bot(command_prefix=".", intents=intents)
 async def updatePlayerCount():
     while True:
         try:
-            players = mcstatus.JavaServer.lookup("localhost:25565").status().players.online
+            players = mcstatus.JavaServer.lookup(os.environ.get("SERVER_HOSTNAME")+":25565").status().players.online
         except:
             await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle)
             break 
@@ -40,7 +40,7 @@ async def updatePlayerCount():
 @client.event
 async def on_ready():
     try:
-        connect("ws://localhost:8000")
+        connect("ws://"+os.environ.get("SERVER_HOSTNAME")+":8000")
         global refreshPlayerCount
         refreshPlayerCount = asyncio.create_task(updatePlayerCount())
     except WindowsError:
@@ -74,7 +74,7 @@ async def start(ctx):
                 await client.change_presence(activity=discord.Game(name="Server is offline"), status=discord.Status.idle) 
                 return
 
-            connect("ws://localhost:8000")
+            connect("ws://"+os.environ.get("SERVER_HOSTNAME")+":8000")
             break
         except WindowsError:
             attempts+=1
@@ -103,7 +103,7 @@ async def stop(ctx):
     # call the websocket on the pc with the minecraft server running on it to close and back it up.
     # the webserver should responed upon completion with some code to tell the discord bot to change presence to not online or sum
     try:
-        websocket = connect("ws://localhost:8000")
+        websocket = connect("ws://"+os.environ.get("SERVER_HOSTNAME")+":8000")
     except WindowsError as e:
         text += "```Unable to start the server, contact the admin```"
         await message.edit(content=text)
@@ -140,7 +140,7 @@ async def stop(ctx):
 @client.command()
 async def console(ctx):
     try:
-        websocket = connect("ws://localhost:8000")
+        websocket = connect("ws://"+os.environ.get("SERVER_HOSTNAME")+":8000")
     except WindowsError as e:
         await ctx.channel.send("```Unable to start the server, contact the admin```")
         return
